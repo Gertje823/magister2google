@@ -13,4 +13,4 @@ This is a script to sync your Magister Schedule to Google Calendar.
 The script will sync the Magister schedule of the next 30 days to Google. 
 
 ##  Feature requests
- If you have any feature requests don't hesitate to open a issue :)
+ If you have any feature requests don't hesitate to open an issue :)
