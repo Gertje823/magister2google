@@ -1,4 +1,7 @@
 from __future__ import print_function
+# pypeteer
+import asyncio
+from pyppeteer import launch
 
 import os, time, argparse
 import datetime, requests
@@ -11,13 +14,12 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/calendar.events']
-
 # Magister settings
-base_url = "BASE_URL"
-bearer_token = "TOKEN_HERE"
+base_url = "YOURSCHOOL.magister.net"
+username = "YOUR_USERNAME"
+password = "YOUR_PASSWORD"
 
+# Set arguments
 parser = argparse.ArgumentParser(description='Magister2Google. Script to sync your magister schedule to Google')
 parser.add_argument('-c', action='store', help='Specify a calendar. Default is primary')
 
@@ -27,6 +29,44 @@ if args.c:
     Calendarid = args.c
 else:
     Calendarid = 'primary'
+
+
+# Set the scope for Google Calendar API
+SCOPES = ['https://www.googleapis.com/auth/calendar.events']
+
+# Magister login Pyppeteer
+async def interceptResponse(request):
+    if request.url == f"https://{base_url}/api/m6/applicatietoegang":
+        global headers
+        headers = request.headers
+async def main():
+    browser = await launch({"headless": True, "args": ["--start-maximized"]})
+    page = await browser.newPage()
+    #await page.setRequestInterception(True)
+
+    await page.goto(f"https://{base_url}")
+    # locate the search box
+    entry_box = await page.waitForXPath("""//*[@id="username"]""")
+
+    await entry_box.type(username)
+    await asyncio.sleep(1)
+    await page.click('button')
+    entry_box = await page.waitForXPath("""//*[@id="password"]""")
+    await entry_box.type(password)
+    await asyncio.sleep(1)
+
+    await page.click('#password_submit')
+    page.on('request',
+            lambda request: asyncio.ensure_future(interceptResponse(request)))
+    await asyncio.sleep(1)
+    await browser.close()
+print("Logging in to Magister...")
+asyncio.get_event_loop().run_until_complete(main())
+
+
+
+
+
 def main():
 
     creds = None
@@ -49,10 +89,10 @@ def main():
     service = build('calendar', 'v3', credentials=creds)
     # Get Magister schedule 4 weeks?
     s = requests.Session()
-    headers = {'Authorization':f'Bearer {bearer_token}'}
-
     try:
         r = s.get(f"https://{base_url}/api/account", headers=headers).json()
+        print(f"Hi {r['Persoon']['Roepnaam']} ")
+
     except requests.exceptions.ConnectionError:
         print("Please enter a valid magister base url")
         exit(1)
@@ -67,7 +107,7 @@ def main():
 
     # Get schedule from Magister
     data = s.get(f"https://{base_url}/api/personen/{r['Persoon']['Id']}/afspraken?status=1&van={date_today}&tot={date_1_month}", headers=headers).json()
-
+    print(f"Found {len(data['Items'])} events")
     # Get all appointments and create an event
     for item in data['Items']:
         if item['Inhoud']:
