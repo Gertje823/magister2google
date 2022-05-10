@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-import os, time
+import os, time, argparse
 import datetime, requests
 from datetime import date
 from bs4 import BeautifulSoup
@@ -18,7 +18,15 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.events']
 base_url = "BASE_URL"
 bearer_token = "TOKEN_HERE"
 
+parser = argparse.ArgumentParser(description='Magister2Google. Script to sync your magister schedule to Google')
+parser.add_argument('-c', action='store', help='Specify a calendar. Default is primary')
 
+args = parser.parse_args()
+
+if args.c:
+    Calendarid = args.c
+else:
+    Calendarid = 'primary'
 def main():
 
     creds = None
@@ -38,11 +46,19 @@ def main():
         # Save the credentials for the next run
         with open('token.json', 'w') as token:
             token.write(creds.to_json())
-
+    service = build('calendar', 'v3', credentials=creds)
     # Get Magister schedule 4 weeks?
     s = requests.Session()
     headers = {'Authorization':f'Bearer {bearer_token}'}
-    r = s.get(f"https://{base_url}/api/account", headers=headers).json()
+
+    try:
+        r = s.get(f"https://{base_url}/api/account", headers=headers).json()
+    except requests.exceptions.ConnectionError:
+        print("Please enter a valid magister base url")
+        exit(1)
+    if r == "Invalid Operation":
+        print("Magister Bearer token expiered")
+        exit(1)
     # Set the dates
     today = datetime.date.today()
     date_today = today.strftime("%Y-%m-%d")
@@ -80,27 +96,23 @@ def main():
 
         # Send data to google if not already exists
         try:
-            create_event(event, creds, item['Start'], item['Omschrijving'])
+            create_event(event, creds, item['Start'], item['Omschrijving'],service)
             print(f"Syncing {item['Omschrijving']}")
         except HttpError:
-            patch_event(event, creds, item['Start'], item['Omschrijving'], hash)
+            patch_event(event, creds, item['Start'], item['Omschrijving'], hash,service)
             print(f"Syncing {item['Omschrijving']}")
-            time.sleep(1)
+            time.sleep(0.4)
 
     print("Done.")
-def create_event(event, creds, event_start, description):
-    # Check for existing events
-    service = build('calendar', 'v3', credentials=creds)
-
-    event = service.events().insert(calendarId='primary', body=event).execute()
+def create_event(event, creds, event_start, description,service):
+    event = service.events().insert(calendarId=Calendarid, body=event).execute()
     print
     'Event created: %s' % (event.get('htmlLink'))
 
-def patch_event(event, creds, event_start, description, id):
+def patch_event(event, creds, event_start, description, id,service):
     # Check for existing events
-    service = build('calendar', 'v3', credentials=creds)
 
-    event = service.events().patch(calendarId='primary', body=event, eventId=id).execute()
+    event = service.events().patch(calendarId=Calendarid, body=event, eventId=id).execute()
     print
     'Event created: %s' % (event.get('htmlLink'))
         
