@@ -22,6 +22,7 @@ password = "YOUR_PASSWORD"
 # Set arguments
 parser = argparse.ArgumentParser(description='Magister2Google. Script to sync your magister schedule to Google')
 parser.add_argument('-c', action='store', help='Specify a calendar. Default is primary')
+parser.add_argument('-d', action='store', help='Specify days to sync. Default is 30')
 
 args = parser.parse_args()
 
@@ -29,7 +30,10 @@ if args.c:
     Calendarid = args.c
 else:
     Calendarid = 'primary'
-
+if args.d:
+    days = int(args.d)
+else:
+    days = 30
 
 # Set the scope for Google Calendar API
 SCOPES = ['https://www.googleapis.com/auth/calendar.events']
@@ -102,7 +106,7 @@ def main():
     # Set the dates
     today = datetime.date.today()
     date_today = today.strftime("%Y-%m-%d")
-    date_1_month = today + datetime.timedelta(days=30)
+    date_1_month = today + datetime.timedelta(days=days)
     date_1_month = date_1_month.strftime("%Y-%m-%d")
 
     # Get schedule from Magister
@@ -134,14 +138,17 @@ def main():
 
         }
 
-        # Send data to google if not already exists
+
         try:
+            # Send data to google if not already exists
             create_event(event, creds, item['Start'], item['Omschrijving'],service)
             print(f"Syncing {item['Omschrijving']}")
+            time.sleep(1)
         except HttpError:
+            # update event with new info
             patch_event(event, creds, item['Start'], item['Omschrijving'], hash,service)
-            print(f"Syncing {item['Omschrijving']}")
-            time.sleep(0.4)
+            print(f"Updating {item['Omschrijving']}")
+            time.sleep(0.6)
 
     print("Done.")
 def create_event(event, creds, event_start, description,service):
