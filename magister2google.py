@@ -23,6 +23,7 @@ password = "YOUR_PASSWORD"
 parser = argparse.ArgumentParser(description='Magister2Google. Script to sync your magister schedule to Google')
 parser.add_argument('-c', action='store', help='Specify a calendar. Default is primary')
 parser.add_argument('-d', action='store', help='Specify days to sync. Default is 30')
+parser.add_argument('-r', action='store', help='Repeat every x time (time in seconds)')
 
 args = parser.parse_args()
 
@@ -164,6 +165,12 @@ def patch_event(event, creds, event_start, description, id,service):
     'Event created: %s' % (event.get('htmlLink'))
         
 if __name__ == '__main__':
-    main()
+    if not args.r:
+        main()
+    else:
+        while True:
+            main()
+            print(f"Sleeping {args.r} before next run")
+            time.sleep(int(args.r))
 
 

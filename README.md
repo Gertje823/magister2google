@@ -14,7 +14,8 @@ The script will sync the Magister schedule of the next 30 days to Google.
 
 ## Arguments
 `-c` Specify a Google Calendar to sync to. (e.g. abc123abc123@group.calendar.google.com) default is primary calendar  
-`-d` Specify amount of days to sync. Default is 30.
+`-d` Specify amount of days to sync. Default is 30.  
+`-r` Repeat every X time (time in seconds)
 
 
 ##  Feature requests
